@@ -162,7 +162,10 @@ class WikiParse < Nokogiri::XML::SAX::Document
 
   def process_heading_link(heading_link)
     puts "Heading Link: #{heading_link[0]} Subbd: #{head_switch} Weight: #{@link_weight}"
-    save_link_to_neo(heading_link[0].slice(7..-3), @link_weight) if @ns
+    # heading_link[0] needs further processing before it can be input into the database
+    # need something to split out the multiple links A Regex which splits on pipes
+    # save_link_to_neo be in a .each block for each match. After filtering actual matches into array
+    # save_link_to_neo(heading_link[0], @link_weight) if @ns
   end
 
   def process_paragraph(paragraph_header)
