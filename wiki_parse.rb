@@ -1,5 +1,4 @@
 require "nokogiri"
-# require "rubygems"
 require "neo4j-core"
 
 # Open Wikipedia Pages XML composed of articles and redirect articles
@@ -163,7 +162,7 @@ class WikiParse < Nokogiri::XML::SAX::Document
 
   def process_heading_link(heading_link)
     puts "Heading Link: #{heading_link[0]} Subbd: #{head_switch} Weight: #{@link_weight}"
-    save_link_to_neo(heading_link[0], @link_weight) if @ns
+    save_link_to_neo(heading_link[0].slice(7..-3), @link_weight) if @ns
   end
 
   def process_paragraph(paragraph_header)
@@ -205,7 +204,7 @@ class WikiParse < Nokogiri::XML::SAX::Document
     Neo4j::Relationship.trigger_on(:typex => 'IdeasRelation')
     Neo4j::Relationship.index :weight, :field_type => Float
     Neo4j::Relationship.index :category
-    
+
     link_category = /[^=][\w\s]*[^=]/.match(head_switch)
     # if pass_excluded_categories(link_category)
       Neo4j::Transaction.run do
