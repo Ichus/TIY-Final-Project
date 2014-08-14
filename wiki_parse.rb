@@ -19,8 +19,8 @@ class WikiParse < Nokogiri::XML::SAX::Document
     @heading_flag = false
     @heading_switch = 0
     @link_weight = 0
-    @excluded_categories = ["External links", "Further reading", "References",
-                            "See also", "Notes", "Footnotes", "Bibliography"]
+    # @excluded_categories = ["External links", "Further reading", "References",
+    #                         "See also", "Notes", "Footnotes", "Bibliography"]
   end
 
   def end_document
@@ -192,8 +192,8 @@ class WikiParse < Nokogiri::XML::SAX::Document
     Neo4j::Node.index :idea
 
     Neo4j::Transaction.run do
-      article_node = Neo4j::Node.find(:idea => "#{@title}")
-      Neo4j::Node.new(:idea => @title, :typex => 'IdeaNode') unless !!article_node.first
+      article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title)}")
+      Neo4j::Node.new(:idea => neo_string_prep_input(@title), :typex => 'IdeaNode') unless !!article_node.first
       article_node.close
     end
   end
@@ -209,12 +209,13 @@ class WikiParse < Nokogiri::XML::SAX::Document
     Neo4j::Relationship.index :category
 
     link_category = /[^=][\w\s]*[^=]/.match(head_switch)
+    link = neo_string_prep_input link
     # if pass_excluded_categories(link_category)
       Neo4j::Transaction.run do
-        article_node = Neo4j::Node.find(:idea => "#{@title}")
+        article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title)}")
         idea_node = article_node.first
         article_node.close
-        link_node = Neo4j::Node.find(:idea => "#{link}")
+        link_node = Neo4j::Node.find("idea: #{link}")
         if link_node.first
           relation_node = link_node.first
         else
@@ -224,7 +225,7 @@ class WikiParse < Nokogiri::XML::SAX::Document
         unless idea_node.rels(:outgoing, :relation).to_other(relation_node)
           idea_link = Neo4j::Relationship.new(:relation, idea_node, relation_node)
           idea_link[:weight] = link_weight
-          idea_link[:category] = link_category
+          idea_link[:category] = neo_string_prep_input link_category
           idea_link[:typex] = 'IdeasRelation'
             # need another .rb file to run through the entire graph database and find all the
             # internal_categories it belongs to by stepping through each link. If the category
@@ -233,6 +234,16 @@ class WikiParse < Nokogiri::XML::SAX::Document
         end
       end
     # end
+  end
+
+  def neo_string_prep_input(string)
+    array = string.split(" ")
+    prepared = array.join("_")
+  end
+
+  def neo_string_prep_output(string)
+    array = string.split("_")
+    prepared = array.join(" ")
   end
 
   # def pass_excluded_categories(category)
