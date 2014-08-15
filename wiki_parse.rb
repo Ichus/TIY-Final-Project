@@ -237,13 +237,17 @@ class WikiParse < Nokogiri::XML::SAX::Document
   end
 
   def neo_string_prep_input(string)
+    if /[()]/.match string
+      paranthesis_array = string.split(/[()]/)
+      string = paranthesis_array.join("")
+    end
     array = string.split(" ")
-    prepared = array.join("_")
+    array.join("_")
   end
 
   def neo_string_prep_output(string)
     array = string.split("_")
-    prepared = array.join(" ")
+    array.join(" ")
   end
 
   # def pass_excluded_categories(category)
