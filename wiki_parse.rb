@@ -192,7 +192,7 @@ class WikiParse < Nokogiri::XML::SAX::Document
     Neo4j::Node.index :idea
 
     Neo4j::Transaction.run do
-      article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title)}")
+      article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title).inspect}")
       Neo4j::Node.new(:idea => neo_string_prep_input(@title), :typex => 'IdeaNode') unless !!article_node.first
       article_node.close
     end
@@ -212,20 +212,21 @@ class WikiParse < Nokogiri::XML::SAX::Document
     link = neo_string_prep_input link
     # if pass_excluded_categories(link_category)
       Neo4j::Transaction.run do
-        article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title)}")
+        article_node = Neo4j::Node.find("idea: #{neo_string_prep_input(@title).inspect}")
         idea_node = article_node.first
         article_node.close
-        link_node = Neo4j::Node.find("idea: #{link}")
+        link_node = Neo4j::Node.find("idea: #{link.inspect}")
         if link_node.first
           relation_node = link_node.first
         else
           relation_node = Neo4j::Node.new(:idea => link, :typex => 'IdeaNode')
         end
         link_node.close
-        unless idea_node.rels(:outgoing, :relation).to_other(relation_node)
+        rel_traverser = idea_node.rels(:outgoing, :relation).to_other(relation_node)
+        unless rel_traverser.first
           idea_link = Neo4j::Relationship.new(:relation, idea_node, relation_node)
           idea_link[:weight] = link_weight
-          idea_link[:category] = neo_string_prep_input link_category
+          idea_link[:category] = link_category.inspect
           idea_link[:typex] = 'IdeasRelation'
             # need another .rb file to run through the entire graph database and find all the
             # internal_categories it belongs to by stepping through each link. If the category
@@ -236,39 +237,12 @@ class WikiParse < Nokogiri::XML::SAX::Document
     # end
   end
 
-  # Lucene is a picky parser. Clean up the strings or she refuses to cooperate
-  # Eventually implement something that replaces problem characters with custom
-  # strings. say ***hy*** , ***pa*** , ***\s*** something unique to replace
-  # each stripped character. They'll have to be accounted for when searching
-  # Some Awful stretch of conditionals?? :(
-  # Then replaced with the proper characters before being returned to the end user
   def neo_string_prep_input(string)
-    # Fix me if performance ever turns around
-    # This is a poor solution. The hyphens are gone, but aren't regenerated
-    # when the string is retrieved from the database.
-    if /[-]/.match string
-      paranthesis_array = string.split(/[-]/)
-      string = paranthesis_array.join("")
-    end
-    # A poor solution for the reasons outlined above
-    if /[()]/.match string
-      paranthesis_array = string.split(/[()]/)
-      string = paranthesis_array.join("")
-    end
-    # Exclamation points as well!. the plot thickens
-    if /[!]/.match string
-      paranthesis_array = string.split(/[!]/)
-      string = paranthesis_array.join("")
-    end
-    array = string.split(" ")
-    array.join("_")
+    string
   end
 
-  # Replaces underscores with spaces before returning results to fix Lucene clean up
-  # Too all the "already underscores" out there. You'll have to bide your time.
   def neo_string_prep_output(string)
-    array = string.split("_")
-    array.join(" ")
+    string
   end
 
   # def pass_excluded_categories(category)
