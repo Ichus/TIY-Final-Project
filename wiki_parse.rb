@@ -236,15 +236,36 @@ class WikiParse < Nokogiri::XML::SAX::Document
     # end
   end
 
+  # Lucene is a picky parser. Clean up the strings or she refuses to cooperate
+  # Eventually implement something that replaces problem characters with custom
+  # strings. say ***hy*** , ***pa*** , ***\s*** something unique to replace
+  # each stripped character. They'll have to be accounted for when searching
+  # Some Awful stretch of conditionals?? :(
+  # Then replaced with the proper characters before being returned to the end user
   def neo_string_prep_input(string)
+    # Fix me if performance ever turns around
+    # This is a poor solution. The hyphens are gone, but aren't regenerated
+    # when the string is retrieved from the database.
+    if /[-]/.match string
+      paranthesis_array = string.split(/[-]/)
+      string = paranthesis_array.join("")
+    end
+    # A poor solution for the reasons outlined above
     if /[()]/.match string
       paranthesis_array = string.split(/[()]/)
+      string = paranthesis_array.join("")
+    end
+    # Exclamation points as well!. the plot thickens
+    if /[!]/.match string
+      paranthesis_array = string.split(/[!]/)
       string = paranthesis_array.join("")
     end
     array = string.split(" ")
     array.join("_")
   end
 
+  # Replaces underscores with spaces before returning results to fix Lucene clean up
+  # Too all the "already underscores" out there. You'll have to bide your time.
   def neo_string_prep_output(string)
     array = string.split("_")
     array.join(" ")
