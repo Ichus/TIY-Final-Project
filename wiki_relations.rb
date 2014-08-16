@@ -6,6 +6,21 @@ class WikiRelations
   end
 
   def run
+    puts "Enter: 1 to test an Idea's relationships."
+    puts "Enter: 2 to test an Idea's categories."
+    input = gets.chomp.to_i
+    case input
+    when 1
+      relations_test
+    when 2
+      category_test
+    else
+      puts "Invalid choice"
+      run
+    end
+  end
+
+  def relations_test
     while @continue do
       puts "Enter an Idea to see what's related."
       idea = gets.chomp
@@ -28,7 +43,7 @@ class WikiRelations
       nodey.close
       node.outgoing(:relation).filter{|path| path.relationships.first[:weight] > 0.7515 && !/#{node[:idea]}/i.match(path.end_node[:idea]) }.each {|rel| puts "#{rel[:idea]}"}
     else
-      puts "I'm a lowly macbook, I haven't heard of this #{idea}. I'll learn more about it sometime"
+      puts "Still crunching data. Nothing on #{idea} yet. Check back soon."
     end
   end
 
@@ -42,6 +57,45 @@ class WikiRelations
     else
       puts "You must enter yes or no. (y/n)"
       continue?
+    end
+  end
+
+  def category_test
+    while @continue do
+      puts "Enter an Idea to see its categories."
+      idea = gets.chomp
+      categories idea
+      continue?
+    end
+    puts "Goodbye"
+  end
+
+  def categories(idea)
+    categories = []
+    nodey = Neo4j::Node.find("idea: #{idea.inspect}~")
+    if nodey.first
+      node = nodey.first
+      nodey.close
+      node.rels.each do |rel|
+        category = rel["category"]
+        category_flag = category.chars.first.to_i
+        category = category.slice(1..-1)
+        already_found = false
+        categories.each { |cat| already_found = true if cat[1].eql? category }
+        categories << [category_flag, category] unless already_found
+     end
+     print_categories categories
+    else
+      puts "Still crunching data. Nothing on #{idea} yet. Check back soon."
+    end
+  end
+
+  def print_categories(categories)
+    categories.reverse_each do |cat|
+      tabs = cat[0]
+      category = cat[1]
+      tabs.times {  print "  " }
+      print "#{category}\n"
     end
   end
 end
