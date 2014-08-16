@@ -4,8 +4,8 @@ require "neo4j-core"
 # Open Wikipedia Pages XML composed of articles and redirect articles
 wiki_xml = File.open(File.join("wiki_dump", "enwiki-20140707-pages-articles.xml"))
 
-# Wikipedia Pages Parser
-class WikiParse < Nokogiri::XML::SAX::Document
+# Same as Wikipedia Pages Parser but with most terminal output removed.
+class WikiExtract < Nokogiri::XML::SAX::Document
   def initialize
     @element_case = 0
     @title = ""
@@ -68,13 +68,9 @@ class WikiParse < Nokogiri::XML::SAX::Document
     when :ns
       # Set this up so pages that aren't articles won't be saved into the database
       @ns = true if string == "0"
-      puts "It is -- #{@ns.to_s} -- that this page should be stored in the database"
+      # puts "It is -- #{@ns.to_s} -- that this page should be stored in the database"
     when :text
-      if !@redirect # Ternary after works
-        parse_text string
-      else
-        parse_redirect string
-      end
+      !@redirect ? parse_text(string) : parse_redirect(string)
     when 0
       # puts "element I'm not interested in"
     end
@@ -161,34 +157,34 @@ class WikiParse < Nokogiri::XML::SAX::Document
 
   def process_link(link)
     if !/:/.match(link)
-      puts "Link: #{link} Subbd: #{head_switch} Weight: #{@link_weight}"
+      # puts "Link: #{link} Subbd: #{head_switch} Weight: #{@link_weight}"
       save_link_to_neo(link, @link_weight) if @ns
       decrement_link_weight
     end
   end
 
   def process_heading_link(heading_link)
-    puts "Heading Link: #{heading_link[0]} Subbd: #{head_switch} Weight: #{@link_weight}"
-    # heading_link[0] needs further processing before it can be input into the database
-    # need something to split out the multiple links A Regex which splits on pipes
-    # save_link_to_neo be in a .each block for each match. After filtering actual matches into array
-    # save_link_to_neo(heading_link[0], @link_weight) if @ns
+    # puts "Heading Link: #{heading_link[0]} Subbd: #{head_switch} Weight: #{@link_weight}"
+    # # heading_link[0] needs further processing before it can be input into the database
+    # # need something to split out the multiple links A Regex which splits on pipes
+    # # save_link_to_neo be in a .each block for each match. After filtering actual matches into array
+    # # save_link_to_neo(heading_link[0], @link_weight) if @ns
   end
 
   def process_paragraph(paragraph_header)
-    puts "Paragraph-Header: #{paragraph_header[0]} Subbd Sub Header: #{@sub_heading}"
+    # puts "Paragraph-Header: #{paragraph_header[0]} Subbd Sub Header: #{@sub_heading}"
     @paragraph_heading = paragraph_header[0]
     heading_switch :paragraph
   end
 
   def process_sub_header(sub_header)
-    puts "Sub-Header: #{sub_header[0]} Subbd Header: #{@heading}"
+    # puts "Sub-Header: #{sub_header[0]} Subbd Header: #{@heading}"
     @sub_heading = sub_header[0]
     heading_switch :sub_head
   end
 
   def process_header(header)
-    puts "Header: #{header[0]} Subbd Title: #{@title}"
+    # puts "Header: #{header[0]} Subbd Title: #{@title}"
     @heading = header[0]
     heading_switch :head
   end
@@ -238,9 +234,6 @@ class WikiParse < Nokogiri::XML::SAX::Document
   end
 end
 
-# Create parser
-parser = Nokogiri::XML::SAX::Parser.new(WikiParse.new)
-
 # Set's trigger to Lucene index the Article nodes in neo4j for finding and sorting via idea name
 Neo4j::Node.trigger_on(:typex => 'IdeaNode')
 Neo4j::Node.index :idea
@@ -249,6 +242,9 @@ Neo4j::Node.index :idea
 Neo4j::Relationship.trigger_on(:typex => 'IdeasRelation')
 Neo4j::Relationship.index :weight, :field_type => Float
 Neo4j::Relationship.index :category
+
+# Create parser
+parser = Nokogiri::XML::SAX::Parser.new(WikiExtract.new)
 
 # Send XML to the parser
 parser.parse(wiki_xml)
