@@ -232,7 +232,7 @@ class WikiParse < Nokogiri::XML::SAX::Document
 
   def skip_excluded_categories(category)
     @excluded_categories.each do |excluded_category|
-      return true if /[\d]?[\s]?#{category}[\s]?/.match excluded_category
+      return true if /[\d]?[\s]?#{excluded_category}[\s]?/.match(category)
     end
     return false
   end
