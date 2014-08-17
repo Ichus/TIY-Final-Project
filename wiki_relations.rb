@@ -8,12 +8,15 @@ class WikiRelations
   def run
     puts "Enter: 1 to test an Idea's relationships."
     puts "Enter: 2 to test an Idea's categories."
+    puts "Enter: 3 to test an Idea's categories."
     input = gets.chomp.to_i
     case input
     when 1
       relations_test
     when 2
       category_test
+    when 3
+      category_relations_test
     else
       puts "Invalid choice"
       run
@@ -47,6 +50,30 @@ class WikiRelations
     end
   end
 
+  def category_relations_test
+    while @continue do
+      puts "Enter an Idea to see one of its categories relations."
+      idea = gets.chomp
+      print_cat_relations(categories(idea, :category_relations), idea)
+      continue?
+    end
+    puts "Goodbye"
+  end
+
+  def print_cat_relations(category, idea)
+    nodey = Neo4j::Node.find("idea: #{idea.inspect}")
+    if nodey.first
+      node = nodey.first
+      nodey.close
+      puts "Category: #{category}"
+      node.outgoing(:relation).filter do |path|
+        path.relationships.first[:weight] > 0.55 &&
+        /#{category}/.match(path.relationships.first[:category]) &&
+        !/#{node[:idea]}/i.match(path.end_node[:idea])
+      end.first(10).each { |rel| puts "Relation: #{rel[:idea]}" }
+    end
+  end
+
   def continue?
     puts "Would you like me to examine another idea?"
     input = gets.chomp
@@ -64,13 +91,15 @@ class WikiRelations
     while @continue do
       puts "Enter an Idea to see its categories."
       idea = gets.chomp
-      categories idea
+      categories(idea, :category)
       continue?
     end
     puts "Goodbye"
   end
 
-  def categories(idea)
+
+  # Discovered A has categories stored that aren't visible on the web page????
+  def categories(idea, flag)
     categories = []
     nodey = Neo4j::Node.find("idea: #{idea.inspect}~")
     if nodey.first
@@ -83,8 +112,12 @@ class WikiRelations
         already_found = false
         categories.each { |cat| already_found = true if cat[1].eql? category }
         categories << [category_flag, category] unless already_found
-     end
-     print_categories categories
+      end
+      if flag == :category
+        print_categories categories
+      elsif flag == :category_relations
+        categories.first[1]
+      end
     else
       puts "Still crunching data. Nothing on #{idea} yet. Check back soon."
     end
